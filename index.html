@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Battleship Bingo - Admin Panel</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-ship"></i> Battleship Bingo</h1>
+            <div class="admin-controls">
+                <button id="editModeToggle" class="btn btn-secondary">
+                    <i class="fas fa-edit"></i> Edit Mode: OFF
+                </button>
+                <button id="createGameBtn" class="btn btn-primary" disabled>
+                    <i class="fas fa-gamepad"></i> Create Game
+                </button>
+            </div>
+        </header>
+
+        <div class="setup-section" id="setupSection">
+            <h2>Game Setup</h2>
+            <div class="grid-size-selector">
+                <label for="gridSize">Select Grid Size:</label>
+                <select id="gridSize">
+                    <option value="">Choose grid size...</option>
+                    <option value="10">10x10</option>
+                    <option value="15">15x15</option>
+                    <option value="20">20x20</option>
+                    <option value="25">25x25</option>
+                </select>
+                <button id="createGridBtn" class="btn btn-primary" disabled>
+                    <i class="fas fa-th"></i> Create Grid
+                </button>
+            </div>
+            
+            <div class="team-names-section" id="teamNamesSection" style="display: none;">
+                <h3>Game Configuration</h3>
+                <div class="team-names-container">
+                    <div class="team-name-input">
+                        <label for="teamAName">Team A Name:</label>
+                        <input type="text" id="teamAName" placeholder="Enter Team A name..." value="Team A">
+                    </div>
+                    <div class="team-name-input">
+                        <label for="teamBName">Team B Name:</label>
+                        <input type="text" id="teamBName" placeholder="Enter Team B name..." value="Team B">
+                    </div>
+                </div>
+                
+                <div class="password-config-section">
+                    <h4><i class="fas fa-key"></i> Admin Password</h4>
+                    <p>Set a custom password for teams to access editing features:</p>
+                    <div class="password-inputs">
+                        <div class="password-input-group">
+                            <label for="adminPassword">Password:</label>
+                            <input type="password" id="adminPassword" placeholder="Enter admin password..." minlength="4">
+                        </div>
+                        <div class="password-input-group">
+                            <label for="confirmPassword">Confirm Password:</label>
+                            <input type="password" id="confirmPassword" placeholder="Confirm password..." minlength="4">
+                        </div>
+                    </div>
+                    <div id="passwordError" class="password-error" style="display: none;">
+                        <i class="fas fa-exclamation-triangle"></i> <span id="passwordErrorText"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="game-section" id="gameSection" style="display: none;">
+            <div class="grid-container">
+                <div id="battleshipGrid"></div>
+            </div>
+        </div>
+
+        <!-- Tile Edit Modal -->
+        <div id="tileEditModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Edit Tile</h3>
+                    <span class="close">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="itemSearch">Search OSRS Item:</label>
+                        <div class="search-container">
+                            <input type="text" id="itemSearch" placeholder="Search for an item...">
+                            <button id="searchBtn" class="btn btn-secondary">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                        <div id="searchResults" class="search-results"></div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="hoverText">Hover Text:</label>
+                        <input type="text" id="hoverText" placeholder="Enter hover text for this tile...">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="tileColor">Background Color:</label>
+                        <input type="color" id="tileColor" value="#ffffff">
+                    </div>
+                    
+                    <div class="current-tile-preview">
+                        <h4>Current Tile Preview:</h4>
+                        <div id="tilePreview" class="tile-preview"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="saveTileBtn" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Save Tile
+                    </button>
+                    <button id="cancelTileBtn" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div id="loadingOverlay" class="loading-overlay">
+            <div class="loading-spinner">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p>Loading...</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

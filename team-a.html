@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team A - Battleship Bingo</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="team-page">
+    <div class="container">
+        <div class="team-header">
+            <h1><i class="fas fa-ship"></i> <span id="teamName">Team A</span></h1>
+        </div>
+        
+        <!-- Password Protection -->
+        <div id="passwordSection" class="password-section">
+            <div class="password-container">
+                <h2><i class="fas fa-lock"></i> Admin Access</h2>
+                <p>Enter password to access editing features:</p>
+                <div class="password-input-container">
+                    <input type="password" id="passwordInput" placeholder="Enter password...">
+                    <button id="passwordSubmit" class="btn btn-primary">
+                        <i class="fas fa-key"></i> Access
+                    </button>
+                </div>
+                <div id="passwordError" class="password-error" style="display: none;">
+                    <i class="fas fa-exclamation-triangle"></i> Incorrect password
+                </div>
+            </div>
+        </div>
+        
+        <!-- Game Controls (Hidden until authenticated) -->
+        <div id="gameControls" class="team-controls" style="display: none;">
+            <div class="color-picker-container">
+                <label for="selectedColor">Selected Color:</label>
+                <input type="color" id="selectedColor" value="#3498db">
+            </div>
+            <button id="clearAllBtn" class="btn btn-danger">
+                <i class="fas fa-eraser"></i> Clear All
+            </button>
+            <button id="lockBtn" class="btn btn-secondary">
+                <i class="fas fa-lock"></i> Lock Editing
+            </button>
+        </div>
+        
+        <div class="team-grid-container">
+            <div id="teamGrid" class="team-grid"></div>
+        </div>
+    </div>
+    
+    <script>
+        // Team page functionality
+        let selectedColor = '#3498db';
+        let isEditingLocked = false;
+        let gameData = null;
+        let adminPassword = null;
+        
+        // Load game data from API
+        async function loadGameData() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const gameId = urlParams.get('gameId');
+            
+            if (!gameId) {
+                document.getElementById('teamGrid').innerHTML = 
+                    '<div class="no-game-message"><i class="fas fa-info-circle"></i><br>No game ID provided. Please access this page through the admin panel.</div>';
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${window.location.origin}/api/games/${gameId}`);
+                
+                if (response.ok) {
+                    gameData = await response.json();
+                    adminPassword = gameData.adminPassword || "TimDuncan1444900"; // Fallback to default
+                    updateTeamName();
+                    renderGrid();
+                } else if (response.status === 404) {
+                    document.getElementById('teamGrid').innerHTML = 
+                        '<div class="no-game-message"><i class="fas fa-exclamation-triangle"></i><br>Game not found. Please check the game ID or create a new game.</div>';
+                } else {
+                    throw new Error('Failed to load game');
+                }
+            } catch (error) {
+                console.error('Error loading game:', error);
+                document.getElementById('teamGrid').innerHTML = 
+                    '<div class="no-game-message"><i class="fas fa-exclamation-triangle"></i><br>Error loading game. Please try again later.</div>';
+            }
+        }
+        
+        function renderGrid() {
+            if (!gameData) return;
+            
+            const grid = document.getElementById('teamGrid');
+            grid.innerHTML = '';
+            grid.style.gridTemplateColumns = `repeat(${gameData.gridSize}, 1fr)`;
+            
+            for (let row = 0; row < gameData.gridSize; row++) {
+                for (let col = 0; col < gameData.gridSize; col++) {
+                    const tile = gameData.grid[row][col];
+                    const backgroundColor = tile?.color || '#ecf0f1';
+                    const imageHTML = tile?.imageUrl ? 
+                        `<img src="${tile.imageUrl}" alt="${tile.itemName}" onerror="this.style.display='none'">` : '';
+                    const hoverTextHTML = tile?.hoverText ? 
+                        `<div class="tile-hover-text">${tile.hoverText}</div>` : '';
+                    
+                    const tileElement = document.createElement('div');
+                    tileElement.className = 'team-tile';
+                    tileElement.style.backgroundColor = backgroundColor;
+                    tileElement.innerHTML = `${imageHTML}${hoverTextHTML}`;
+                    
+                    if (!isEditingLocked) {
+                        tileElement.addEventListener('click', () => {
+                            tileElement.style.backgroundColor = selectedColor;
+                        });
+                    }
+                    
+                    grid.appendChild(tileElement);
+                }
+            }
+        }
+        
+        // Password authentication
+        document.getElementById('passwordSubmit').addEventListener('click', () => {
+            const password = document.getElementById('passwordInput').value;
+            const errorDiv = document.getElementById('passwordError');
+            
+            // Wait for game data to load if not already loaded
+            if (!adminPassword) {
+                errorDiv.style.display = 'block';
+                document.getElementById('passwordError').innerHTML = '<i class="fas fa-exclamation-triangle"></i> Loading game data, please wait...';
+                setTimeout(() => {
+                    errorDiv.style.display = 'none';
+                }, 2000);
+                return;
+            }
+            
+            if (password === adminPassword) {
+                document.getElementById('passwordSection').style.display = 'none';
+                document.getElementById('gameControls').style.display = 'flex';
+                isEditingLocked = false;
+            } else {
+                errorDiv.style.display = 'block';
+                document.getElementById('passwordInput').value = '';
+                setTimeout(() => {
+                    errorDiv.style.display = 'none';
+                }, 3000);
+            }
+        });
+        
+        document.getElementById('passwordInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('passwordSubmit').click();
+            }
+        });
+        
+        // Game controls
+        document.getElementById('selectedColor').addEventListener('change', (e) => {
+            selectedColor = e.target.value;
+        });
+        
+        document.getElementById('clearAllBtn').addEventListener('click', () => {
+            if (confirm('Are you sure you want to clear all tiles?')) {
+                document.querySelectorAll('.team-tile').forEach(tile => {
+                    tile.style.backgroundColor = '#ecf0f1';
+                });
+            }
+        });
+        
+        document.getElementById('lockBtn').addEventListener('click', () => {
+            isEditingLocked = !isEditingLocked;
+            const lockBtn = document.getElementById('lockBtn');
+            
+            if (isEditingLocked) {
+                lockBtn.innerHTML = '<i class="fas fa-unlock"></i> Unlock Editing';
+                lockBtn.classList.remove('btn-secondary');
+                lockBtn.classList.add('btn-success');
+            } else {
+                lockBtn.innerHTML = '<i class="fas fa-lock"></i> Lock Editing';
+                lockBtn.classList.remove('btn-success');
+                lockBtn.classList.add('btn-secondary');
+            }
+            
+            // Update tile click handlers
+            document.querySelectorAll('.team-tile').forEach(tile => {
+                tile.replaceWith(tile.cloneNode(true));
+            });
+            
+            if (!isEditingLocked) {
+                document.querySelectorAll('.team-tile').forEach(tile => {
+                    tile.addEventListener('click', () => {
+                        tile.style.backgroundColor = selectedColor;
+                    });
+                });
+            }
+        });
+        
+        // Update team name from game data
+        function updateTeamName() {
+            if (gameData && gameData.teamAName) {
+                document.getElementById('teamName').textContent = gameData.teamAName;
+                document.title = `${gameData.teamAName} - Battleship Bingo`;
+            }
+        }
+
+        // Load game data on page load
+        loadGameData();
+    </script>
+</body>
+</html>
