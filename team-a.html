@@ -33,8 +33,21 @@
         <!-- Game Controls (Hidden until authenticated) -->
         <div id="gameControls" class="team-controls" style="display: none;">
             <div class="color-picker-container">
-                <label for="selectedColor">Selected Color:</label>
-                <input type="color" id="selectedColor" value="#3498db">
+                <label>Selected Color:</label>
+                <div class="color-options">
+                    <button type="button" class="color-btn" data-color="transparent" style="background: linear-gradient(45deg, #2d2d2d, #1a1a1a); border: 2px solid #666;">
+                        <span class="color-label">Default</span>
+                    </button>
+                    <button type="button" class="color-btn" data-color="#ffffff" style="background: #ffffff;">
+                        <span class="color-label">White</span>
+                    </button>
+                    <button type="button" class="color-btn" data-color="#ffff00" style="background: #ffff00;">
+                        <span class="color-label">Yellow</span>
+                    </button>
+                    <button type="button" class="color-btn" data-color="#ff0000" style="background: #ff0000;">
+                        <span class="color-label">Red</span>
+                    </button>
+                </div>
             </div>
             <button id="clearAllBtn" class="btn btn-danger">
                 <i class="fas fa-eraser"></i> Clear All
@@ -51,15 +64,17 @@
     
     <script>
         // Team page functionality
-        let selectedColor = '#3498db';
+        let selectedColor = 'transparent';
         let isEditingLocked = false;
         let gameData = null;
         let adminPassword = null;
+        let gameId = null;
+        let teamState = { markedTiles: {} };
         
         // Load game data from API
         async function loadGameData() {
             const urlParams = new URLSearchParams(window.location.search);
-            const gameId = urlParams.get('gameId');
+            gameId = urlParams.get('gameId');
             
             if (!gameId) {
                 document.getElementById('teamGrid').innerHTML = 
@@ -68,14 +83,18 @@
             }
             
             try {
-                const response = await fetch(`${window.location.origin}/api/games/${gameId}`);
+                // Load game data
+                const gameResponse = await fetch(`${window.location.origin}/api/games/${gameId}`);
                 
-                if (response.ok) {
-                    gameData = await response.json();
-                    adminPassword = gameData.adminPassword || "TimDuncan1444900"; // Fallback to default
+                if (gameResponse.ok) {
+                    gameData = await gameResponse.json();
+                    adminPassword = gameData.adminPassword || "TimDuncan1444900";
                     updateTeamName();
                     renderGrid();
-                } else if (response.status === 404) {
+                    
+                    // Load team state
+                    await loadTeamState();
+                } else if (gameResponse.status === 404) {
                     document.getElementById('teamGrid').innerHTML = 
                         '<div class="no-game-message"><i class="fas fa-exclamation-triangle"></i><br>Game not found. Please check the game ID or create a new game.</div>';
                 } else {
@@ -86,6 +105,51 @@
                 document.getElementById('teamGrid').innerHTML = 
                     '<div class="no-game-message"><i class="fas fa-exclamation-triangle"></i><br>Error loading game. Please try again later.</div>';
             }
+        }
+        
+        // Load team state
+        async function loadTeamState() {
+            try {
+                const response = await fetch(`${window.location.origin}/api/games/${gameId}/team/A/state`);
+                if (response.ok) {
+                    teamState = await response.json();
+                    applyTeamState();
+                }
+            } catch (error) {
+                console.error('Error loading team state:', error);
+            }
+        }
+        
+        // Save team state
+        async function saveTeamState() {
+            try {
+                await fetch(`${window.location.origin}/api/games/${gameId}/team/A/state`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        markedTiles: teamState.markedTiles
+                    })
+                });
+            } catch (error) {
+                console.error('Error saving team state:', error);
+            }
+        }
+        
+        // Apply team state to grid
+        function applyTeamState() {
+            Object.keys(teamState.markedTiles).forEach(tileKey => {
+                const tileElement = document.querySelector(`[data-row="${tileKey.split(',')[0]}"][data-col="${tileKey.split(',')[1]}"]`);
+                if (tileElement) {
+                    const color = teamState.markedTiles[tileKey];
+                    if (color === 'transparent') {
+                        tileElement.style.background = 'linear-gradient(135deg, #2d2d2d, #1a1a1a)';
+                    } else {
+                        tileElement.style.background = color;
+                    }
+                }
+            });
         }
         
         function renderGrid() {
@@ -154,16 +218,32 @@
             }
         });
         
-        // Game controls
-        document.getElementById('selectedColor').addEventListener('change', (e) => {
-            selectedColor = e.target.value;
+        // Game controls - color selection
+        document.querySelectorAll('.color-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                // Remove selected class from all buttons
+                document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('selected'));
+                // Add selected class to clicked button
+                e.target.closest('.color-btn').classList.add('selected');
+                selectedColor = e.target.closest('.color-btn').dataset.color;
+            });
         });
+        
+        // Set default color selection
+        document.querySelector('[data-color="transparent"]').classList.add('selected');
         
         document.getElementById('clearAllBtn').addEventListener('click', () => {
             if (confirm('Are you sure you want to clear all tiles?')) {
+                // Clear all marked tiles
+                teamState.markedTiles = {};
+                
+                // Reset visual state
                 document.querySelectorAll('.team-tile').forEach(tile => {
-                    tile.style.backgroundColor = '#ecf0f1';
+                    tile.style.background = 'linear-gradient(135deg, #2d2d2d, #1a1a1a)';
                 });
+                
+                // Save state
+                saveTeamState();
             }
         });
         
@@ -189,7 +269,22 @@
             if (!isEditingLocked) {
                 document.querySelectorAll('.team-tile').forEach(tile => {
                     tile.addEventListener('click', () => {
-                        tile.style.backgroundColor = selectedColor;
+                        const row = tile.dataset.row;
+                        const col = tile.dataset.col;
+                        const tileKey = `${row},${col}`;
+                        
+                        // Update visual state
+                        if (selectedColor === 'transparent') {
+                            tile.style.background = 'linear-gradient(135deg, #2d2d2d, #1a1a1a)';
+                        } else {
+                            tile.style.background = selectedColor;
+                        }
+                        
+                        // Update team state
+                        teamState.markedTiles[tileKey] = selectedColor;
+                        
+                        // Save state
+                        saveTeamState();
                     });
                 });
             }

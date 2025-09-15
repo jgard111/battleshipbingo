@@ -66,7 +66,16 @@ app.post('/api/games', (req, res) => {
         games[gameId] = {
             ...gameData,
             createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
+            updatedAt: new Date().toISOString(),
+            // Initialize team states
+            teamAState: {
+                markedTiles: {},
+                lastUpdated: new Date().toISOString()
+            },
+            teamBState: {
+                markedTiles: {},
+                lastUpdated: new Date().toISOString()
+            }
         };
         
         if (writeGames(games)) {
@@ -120,6 +129,59 @@ app.put('/api/games/:gameId', (req, res) => {
         }
     } catch (error) {
         console.error('Error updating game:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Team-specific state endpoints
+app.get('/api/games/:gameId/team/:teamId/state', (req, res) => {
+    try {
+        const { gameId, teamId } = req.params;
+        const games = readGames();
+        
+        if (!games[gameId]) {
+            return res.status(404).json({ error: 'Game not found' });
+        }
+        
+        const teamStateKey = teamId === 'A' ? 'teamAState' : 'teamBState';
+        const teamState = games[gameId][teamStateKey] || { markedTiles: {}, lastUpdated: new Date().toISOString() };
+        
+        res.json(teamState);
+    } catch (error) {
+        console.error('Error fetching team state:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.put('/api/games/:gameId/team/:teamId/state', (req, res) => {
+    try {
+        const { gameId, teamId } = req.params;
+        const { markedTiles } = req.body;
+        
+        const games = readGames();
+        
+        if (!games[gameId]) {
+            return res.status(404).json({ error: 'Game not found' });
+        }
+        
+        const teamStateKey = teamId === 'A' ? 'teamAState' : 'teamBState';
+        
+        if (!games[gameId][teamStateKey]) {
+            games[gameId][teamStateKey] = { markedTiles: {}, lastUpdated: new Date().toISOString() };
+        }
+        
+        games[gameId][teamStateKey] = {
+            markedTiles: markedTiles || {},
+            lastUpdated: new Date().toISOString()
+        };
+        
+        if (writeGames(games)) {
+            res.json({ success: true });
+        } else {
+            res.status(500).json({ error: 'Failed to save team state' });
+        }
+    } catch (error) {
+        console.error('Error saving team state:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });

@@ -99,7 +99,7 @@ class BattleshipBingo {
 
         // Real-time preview updates
         document.getElementById('hoverText').addEventListener('input', () => this.updatePreview());
-        document.getElementById('tileColor').addEventListener('change', () => this.updatePreview());
+        
     }
 
     createGrid() {
@@ -166,8 +166,9 @@ class BattleshipBingo {
         // Reset form
         document.getElementById('itemSearch').value = '';
         document.getElementById('hoverText').value = tile?.hoverText || '';
-        document.getElementById('tileColor').value = tile?.color || '#ffffff';
         document.getElementById('searchResults').innerHTML = '';
+        
+        // No color selection on admin board
         
         this.updatePreview();
         modal.style.display = 'block';
@@ -277,9 +278,10 @@ class BattleshipBingo {
         const { row, col } = this.currentEditingTile;
         const tile = this.grid[row][col];
         const hoverText = document.getElementById('hoverText').value;
-        const color = document.getElementById('tileColor').value;
         
-        preview.style.backgroundColor = color;
+        // Set default background for admin preview (no color changes on admin board)
+        preview.style.background = 'linear-gradient(135deg, #2d2d2d, #1a1a1a)';
+        
         preview.innerHTML = '';
         
         if (tile && tile.imageUrl) {
@@ -306,14 +308,13 @@ class BattleshipBingo {
     saveTile() {
         const { row, col } = this.currentEditingTile;
         const hoverText = document.getElementById('hoverText').value;
-        const color = document.getElementById('tileColor').value;
         
         if (!this.grid[row][col]) {
             this.grid[row][col] = {};
         }
         
         this.grid[row][col].hoverText = hoverText;
-        this.grid[row][col].color = color;
+        // No color saving on admin board - colors are only for team pages
         
         // Update the actual tile in the grid
         this.updateTileDisplay(row, col);
@@ -327,8 +328,8 @@ class BattleshipBingo {
         
         if (!tile) return;
         
-        // Update background color
-        tileElement.style.backgroundColor = tile.color || '#ffffff';
+        // Set default background for admin board (no color changes)
+        tileElement.style.background = 'linear-gradient(135deg, #2d2d2d, #1a1a1a)';
         
         // Update image
         tileElement.innerHTML = '';
