@@ -8,8 +8,20 @@
   ],
   "routes": [
     {
+      "src": "/api/(.*)",
+      "dest": "/server.js"
+    },
+    {
+      "src": "/team-a",
+      "dest": "/team-a.html"
+    },
+    {
+      "src": "/team-b", 
+      "dest": "/team-b.html"
+    },
+    {
       "src": "/(.*)",
-      "dest": "server.js"
+      "dest": "/$1"
     }
   ]
 }

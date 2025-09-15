@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const fs = require('fs');
+const { kv } = require('@vercel/kv');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -11,31 +11,23 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('.'));
 
-// Data storage (in production, use a proper database)
-const gamesFile = 'games.json';
-
-// Initialize games file if it doesn't exist
-if (!fs.existsSync(gamesFile)) {
-    fs.writeFileSync(gamesFile, JSON.stringify({}));
-}
-
-// Helper functions
-function readGames() {
+// Helper functions for Redis operations
+async function readGames() {
     try {
-        const data = fs.readFileSync(gamesFile, 'utf8');
-        return JSON.parse(data);
+        const games = await kv.get('battleship_games');
+        return games || {};
     } catch (error) {
-        console.error('Error reading games file:', error);
+        console.error('Error reading games from KV:', error);
         return {};
     }
 }
 
-function writeGames(games) {
+async function writeGames(newGames) {
     try {
-        fs.writeFileSync(gamesFile, JSON.stringify(games, null, 2));
+        await kv.set('battleship_games', newGames);
         return true;
     } catch (error) {
-        console.error('Error writing games file:', error);
+        console.error('Error writing games to KV:', error);
         return false;
     }
 }
@@ -54,7 +46,7 @@ app.get('/team-b', (req, res) => {
 });
 
 // API Routes
-app.post('/api/games', (req, res) => {
+app.post('/api/games', async (req, res) => {
     try {
         const { gameId, gameData } = req.body;
         
@@ -62,7 +54,7 @@ app.post('/api/games', (req, res) => {
             return res.status(400).json({ error: 'Game ID and data are required' });
         }
         
-        const games = readGames();
+        const games = await readGames();
         games[gameId] = {
             ...gameData,
             createdAt: new Date().toISOString(),
@@ -78,7 +70,7 @@ app.post('/api/games', (req, res) => {
             }
         };
         
-        if (writeGames(games)) {
+        if (await writeGames(games)) {
             res.json({ success: true, gameId });
         } else {
             res.status(500).json({ error: 'Failed to save game' });
@@ -89,10 +81,10 @@ app.post('/api/games', (req, res) => {
     }
 });
 
-app.get('/api/games/:gameId', (req, res) => {
+app.get('/api/games/:gameId', async (req, res) => {
     try {
         const { gameId } = req.params;
-        const games = readGames();
+        const games = await readGames();
         
         if (games[gameId]) {
             res.json(games[gameId]);
@@ -105,12 +97,12 @@ app.get('/api/games/:gameId', (req, res) => {
     }
 });
 
-app.put('/api/games/:gameId', (req, res) => {
+app.put('/api/games/:gameId', async (req, res) => {
     try {
         const { gameId } = req.params;
         const { gameData } = req.body;
         
-        const games = readGames();
+        const games = await readGames();
         
         if (!games[gameId]) {
             return res.status(404).json({ error: 'Game not found' });
@@ -122,7 +114,7 @@ app.put('/api/games/:gameId', (req, res) => {
             updatedAt: new Date().toISOString()
         };
         
-        if (writeGames(games)) {
+        if (await writeGames(games)) {
             res.json({ success: true });
         } else {
             res.status(500).json({ error: 'Failed to update game' });
@@ -134,10 +126,10 @@ app.put('/api/games/:gameId', (req, res) => {
 });
 
 // Team-specific state endpoints
-app.get('/api/games/:gameId/team/:teamId/state', (req, res) => {
+app.get('/api/games/:gameId/team/:teamId/state', async (req, res) => {
     try {
         const { gameId, teamId } = req.params;
-        const games = readGames();
+        const games = await readGames();
         
         if (!games[gameId]) {
             return res.status(404).json({ error: 'Game not found' });
@@ -153,12 +145,12 @@ app.get('/api/games/:gameId/team/:teamId/state', (req, res) => {
     }
 });
 
-app.put('/api/games/:gameId/team/:teamId/state', (req, res) => {
+app.put('/api/games/:gameId/team/:teamId/state', async (req, res) => {
     try {
         const { gameId, teamId } = req.params;
         const { markedTiles } = req.body;
         
-        const games = readGames();
+        const games = await readGames();
         
         if (!games[gameId]) {
             return res.status(404).json({ error: 'Game not found' });
@@ -175,7 +167,7 @@ app.put('/api/games/:gameId/team/:teamId/state', (req, res) => {
             lastUpdated: new Date().toISOString()
         };
         
-        if (writeGames(games)) {
+        if (await writeGames(games)) {
             res.json({ success: true });
         } else {
             res.status(500).json({ error: 'Failed to save team state' });
@@ -186,9 +178,9 @@ app.put('/api/games/:gameId/team/:teamId/state', (req, res) => {
     }
 });
 
-app.get('/api/games', (req, res) => {
+app.get('/api/games', async (req, res) => {
     try {
-        const games = readGames();
+        const games = await readGames();
         const gameList = Object.keys(games).map(gameId => ({
             gameId,
             createdAt: games[gameId].createdAt,
@@ -203,8 +195,13 @@ app.get('/api/games', (req, res) => {
     }
 });
 
-// Start server
-app.listen(PORT, () => {
-    console.log(`Battleship Bingo server running on port ${PORT}`);
-    console.log(`Access the game at: http://localhost:${PORT}`);
-});
+// Export for Vercel
+module.exports = app;
+
+// Start server locally
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`Battleship Bingo server running on port ${PORT}`);
+        console.log(`Access the game at: http://localhost:${PORT}`);
+    });
+}
