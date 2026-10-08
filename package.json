@@ -1,0 +1,14 @@
+{
+  "name": "osrs-battleship-bingo",
+  "version": "1.0.0",
+  "description": "Battleship Bingo tracker for Old School RuneScape clans.",
+  "type": "module",
+  "private": true,
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
